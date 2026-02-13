@@ -1,0 +1,455 @@
+openapi: 3.0.3
+info:
+  title: Todo AI Chatbot API
+  description: |
+    RESTful API for conversational task management through natural language.
+    Users interact with an AI assistant to create, view, complete, delete, and update tasks.
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@example.com
+
+servers:
+  - url: https://api.example.com
+    description: Production server
+  - url: http://localhost:8000
+    description: Local development server
+
+security:
+  - BearerAuth: []
+
+paths:
+  /api/{user_id}/chat:
+    post:
+      summary: Send message to AI chatbot
+      description: |
+        Process a user message through the AI chatbot. The chatbot interprets natural language
+        commands and executes task operations through MCP tools. Maintains conversation context
+        across multiple messages.
+
+        **Stateless Architecture**: Server loads conversation history from database, processes
+        message, stores response, and returns result without maintaining session state.
+      operationId: sendChatMessage
+      tags:
+        - Chat
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: UUID of the authenticated user
+          schema:
+            type: string
+            format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - message
+              properties:
+                message:
+                  type: string
+                  description: User's natural language message
+                  minLength: 1
+                  maxLength: 2000
+                  example: "Add a task to buy groceries"
+                conversation_id:
+                  type: string
+                  format: uuid
+                  description: |
+                    Optional conversation ID to continue existing conversation.
+                    If omitted, a new conversation is created.
+                  nullable: true
+                  example: "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+      responses:
+        '200':
+          description: Message processed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - conversation_id
+                  - response
+                  - tool_calls
+                properties:
+                  conversation_id:
+                    type: string
+                    format: uuid
+                    description: ID of the conversation (new or existing)
+                    example: "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+                  response:
+                    type: string
+                    description: AI assistant's response message
+                    example: "I've added 'Buy groceries' to your task list."
+                  tool_calls:
+                    type: array
+                    description: List of MCP tools invoked during processing
+                    items:
+                      type: object
+                      required:
+                        - tool
+                        - args
+                      properties:
+                        tool:
+                          type: string
+                          description: Name of the MCP tool invoked
+                          enum:
+                            - add_task
+                            - list_tasks
+                            - complete_task
+                            - delete_task
+                            - update_task
+                          example: "add_task"
+                        args:
+                          type: object
+                          description: Arguments passed to the tool
+                          example:
+                            user_id: "550e8400-e29b-41d4-a716-446655440000"
+                            title: "Buy groceries"
+                            description: null
+              examples:
+                task_creation:
+                  summary: Task creation response
+                  value:
+                    conversation_id: "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+                    response: "I've added 'Buy groceries' to your task list."
+                    tool_calls:
+                      - tool: "add_task"
+                        args:
+                          user_id: "550e8400-e29b-41d4-a716-446655440000"
+                          title: "Buy groceries"
+                          description: null
+                task_listing:
+                  summary: Task listing response
+                  value:
+                    conversation_id: "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+                    response: "You have 3 pending tasks: 1. Buy groceries, 2. Call dentist, 3. Finish report"
+                    tool_calls:
+                      - tool: "list_tasks"
+                        args:
+                          user_id: "550e8400-e29b-41d4-a716-446655440000"
+                          status: "pending"
+        '400':
+          description: Invalid request (empty message, invalid UUID format)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Bad Request"
+                message: "Message cannot be empty"
+                code: "INVALID_MESSAGE"
+        '401':
+          description: Unauthorized (missing or invalid JWT token)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Unauthorized"
+                message: "Invalid or expired authentication token"
+                code: "AUTH_FAILED"
+        '403':
+          description: Forbidden (user_id does not match authenticated user)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Forbidden"
+                message: "Cannot access another user's conversation"
+                code: "PERMISSION_DENIED"
+        '404':
+          description: Conversation not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Not Found"
+                message: "Conversation not found"
+                code: "CONVERSATION_NOT_FOUND"
+        '500':
+          description: Internal server error (agent execution failure, database error)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Internal Server Error"
+                message: "Failed to process message"
+                code: "AGENT_EXECUTION_FAILED"
+        '503':
+          description: Service unavailable (OpenAI API down, database unavailable)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Service Unavailable"
+                message: "AI service temporarily unavailable"
+                code: "SERVICE_UNAVAILABLE"
+
+  /api/{user_id}/conversations:
+    get:
+      summary: List user's conversations
+      description: |
+        Retrieve all conversations for the authenticated user, ordered by most recent activity.
+        Useful for displaying conversation history in the UI.
+      operationId: listConversations
+      tags:
+        - Conversations
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: UUID of the authenticated user
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          description: Maximum number of conversations to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          description: Number of conversations to skip (for pagination)
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: List of conversations
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - conversations
+                  - total
+                properties:
+                  conversations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ConversationSummary'
+                  total:
+                    type: integer
+                    description: Total number of conversations for this user
+                    example: 15
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/{user_id}/conversations/{conversation_id}:
+    get:
+      summary: Get conversation history
+      description: |
+        Retrieve full message history for a specific conversation.
+        Messages are returned in chronological order.
+      operationId: getConversation
+      tags:
+        - Conversations
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: conversation_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: max_messages
+          in: query
+          description: Maximum number of recent messages to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+      responses:
+        '200':
+          description: Conversation with message history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conversation'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT token obtained from Better Auth authentication system (Phase II).
+        Include in Authorization header: `Bearer <token>`
+
+  schemas:
+    Error:
+      type: object
+      required:
+        - error
+        - message
+        - code
+      properties:
+        error:
+          type: string
+          description: Human-readable error category
+          example: "Bad Request"
+        message:
+          type: string
+          description: Detailed error message
+          example: "Message cannot be empty"
+        code:
+          type: string
+          description: Machine-readable error code
+          example: "INVALID_MESSAGE"
+
+    ConversationSummary:
+      type: object
+      required:
+        - id
+        - created_at
+        - updated_at
+        - message_count
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Conversation identifier
+          example: "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+        created_at:
+          type: string
+          format: date-time
+          description: Conversation creation timestamp
+          example: "2026-02-07T10:30:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          description: Last message timestamp
+          example: "2026-02-07T14:45:00Z"
+        message_count:
+          type: integer
+          description: Total number of messages in conversation
+          example: 12
+        last_message_preview:
+          type: string
+          description: Preview of the last message (first 100 characters)
+          example: "I've marked 'Buy groceries' as complete."
+
+    Conversation:
+      type: object
+      required:
+        - id
+        - user_id
+        - created_at
+        - updated_at
+        - messages
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+        user_id:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-02-07T10:30:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          example: "2026-02-07T14:45:00Z"
+        messages:
+          type: array
+          description: Messages in chronological order
+          items:
+            $ref: '#/components/schemas/Message'
+
+    Message:
+      type: object
+      required:
+        - id
+        - role
+        - content
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        role:
+          type: string
+          enum: [user, assistant]
+          description: Message sender
+          example: "user"
+        content:
+          type: string
+          description: Message text content
+          example: "Add a task to buy groceries"
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-02-07T10:30:15Z"
+
+  responses:
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Unauthorized"
+            message: "Invalid or expired authentication token"
+            code: "AUTH_FAILED"
+
+    Forbidden:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Forbidden"
+            message: "Cannot access another user's data"
+            code: "PERMISSION_DENIED"
+
+    NotFound:
+      description: Not Found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Not Found"
+            message: "Resource not found"
+            code: "NOT_FOUND"
+
+tags:
+  - name: Chat
+    description: AI chatbot conversation endpoints
+  - name: Conversations
+    description: Conversation history management

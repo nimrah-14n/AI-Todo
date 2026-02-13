@@ -1,0 +1,9 @@
+add Buy groceries --desc Milk eggs bread
+add Call mom
+list
+complete 1
+list --pending
+update 2 --title Call mom birthday
+list
+delete 1
+exit

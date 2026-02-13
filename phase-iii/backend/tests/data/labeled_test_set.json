@@ -1,0 +1,346 @@
+{
+  "description": "Labeled test set for measuring Todo AI Chatbot accuracy",
+  "version": "1.0.0",
+  "total_cases": 100,
+  "categories": {
+    "add_task": 25,
+    "list_tasks": 20,
+    "complete_task": 20,
+    "delete_task": 15,
+    "update_task": 15,
+    "general": 5
+  },
+  "test_cases": [
+    {
+      "id": 1,
+      "category": "add_task",
+      "input": "Add a task to buy groceries",
+      "expected_intent": "add_task",
+      "expected_tool_calls": ["add_task"],
+      "expected_parameters": {
+        "title": "buy groceries"
+      },
+      "expected_outcome": "success"
+    },
+    {
+      "id": 2,
+      "category": "add_task",
+      "input": "Create a reminder to call mom tomorrow",
+      "expected_intent": "add_task",
+      "expected_tool_calls": ["add_task"],
+      "expected_parameters": {
+        "title": "call mom tomorrow"
+      },
+      "expected_outcome": "success"
+    },
+    {
+      "id": 3,
+      "category": "add_task",
+      "input": "I need to finish the report by Friday",
+      "expected_intent": "add_task",
+      "expected_tool_calls": ["add_task"],
+      "expected_parameters": {
+        "title": "finish the report by Friday"
+      },
+      "expected_outcome": "success"
+    },
+    {
+      "id": 4,
+      "category": "add_task",
+      "input": "Remember to water the plants",
+      "expected_intent": "add_task",
+      "expected_tool_calls": ["add_task"],
+      "expected_parameters": {
+        "title": "water the plants"
+      },
+      "expected_outcome": "success"
+    },
+    {
+      "id": 5,
+      "category": "add_task",
+      "input": "Add task: Schedule dentist appointment for next week",
+      "expected_intent": "add_task",
+      "expected_tool_calls": ["add_task"],
+      "expected_parameters": {
+        "title": "Schedule dentist appointment for next week"
+      },
+      "expected_outcome": "success"
+    },
+    {
+      "id": 6,
+      "category": "list_tasks",
+      "input": "Show me all my tasks",
+      "expected_intent": "list_tasks",
+      "expected_tool_calls": ["list_tasks"],
+      "expected_parameters": {},
+      "expected_outcome": "success"
+    },
+    {
+      "id": 7,
+      "category": "list_tasks",
+      "input": "What do I need to do?",
+      "expected_intent": "list_tasks",
+      "expected_tool_calls": ["list_tasks"],
+      "expected_parameters": {},
+      "expected_outcome": "success"
+    },
+    {
+      "id": 8,
+      "category": "list_tasks",
+      "input": "List my incomplete tasks",
+      "expected_intent": "list_tasks",
+      "expected_tool_calls": ["list_tasks"],
+      "expected_parameters": {
+        "is_complete": false
+      },
+      "expected_outcome": "success"
+    },
+    {
+      "id": 9,
+      "category": "list_tasks",
+      "input": "Show completed tasks",
+      "expected_intent": "list_tasks",
+      "expected_tool_calls": ["list_tasks"],
+      "expected_parameters": {
+        "is_complete": true
+      },
+      "expected_outcome": "success"
+    },
+    {
+      "id": 10,
+      "category": "list_tasks",
+      "input": "What tasks are pending?",
+      "expected_intent": "list_tasks",
+      "expected_tool_calls": ["list_tasks"],
+      "expected_parameters": {
+        "is_complete": false
+      },
+      "expected_outcome": "success"
+    },
+    {
+      "id": 11,
+      "category": "complete_task",
+      "input": "Mark 'buy groceries' as complete",
+      "expected_intent": "complete_task",
+      "expected_tool_calls": ["list_tasks", "complete_task"],
+      "expected_parameters": {
+        "task_title_match": "buy groceries"
+      },
+      "expected_outcome": "success"
+    },
+    {
+      "id": 12,
+      "category": "complete_task",
+      "input": "I finished the report",
+      "expected_intent": "complete_task",
+      "expected_tool_calls": ["list_tasks", "complete_task"],
+      "expected_parameters": {
+        "task_title_match": "report"
+      },
+      "expected_outcome": "success"
+    },
+    {
+      "id": 13,
+      "category": "complete_task",
+      "input": "Done with calling mom",
+      "expected_intent": "complete_task",
+      "expected_tool_calls": ["list_tasks", "complete_task"],
+      "expected_parameters": {
+        "task_title_match": "call mom"
+      },
+      "expected_outcome": "success"
+    },
+    {
+      "id": 14,
+      "category": "complete_task",
+      "input": "Complete the first task",
+      "expected_intent": "complete_task",
+      "expected_tool_calls": ["list_tasks", "complete_task"],
+      "expected_parameters": {
+        "task_position": 1
+      },
+      "expected_outcome": "success"
+    },
+    {
+      "id": 15,
+      "category": "delete_task",
+      "input": "Delete the groceries task",
+      "expected_intent": "delete_task",
+      "expected_tool_calls": ["list_tasks", "delete_task"],
+      "expected_parameters": {
+        "task_title_match": "groceries"
+      },
+      "expected_outcome": "success"
+    },
+    {
+      "id": 16,
+      "category": "delete_task",
+      "input": "Remove the reminder about mom",
+      "expected_intent": "delete_task",
+      "expected_tool_calls": ["list_tasks", "delete_task"],
+      "expected_parameters": {
+        "task_title_match": "mom"
+      },
+      "expected_outcome": "success"
+    },
+    {
+      "id": 17,
+      "category": "delete_task",
+      "input": "Cancel the meeting task",
+      "expected_intent": "delete_task",
+      "expected_tool_calls": ["list_tasks", "delete_task"],
+      "expected_parameters": {
+        "task_title_match": "meeting"
+      },
+      "expected_outcome": "success"
+    },
+    {
+      "id": 18,
+      "category": "update_task",
+      "input": "Change 'buy groceries' to 'buy groceries and snacks'",
+      "expected_intent": "update_task",
+      "expected_tool_calls": ["list_tasks", "update_task"],
+      "expected_parameters": {
+        "task_title_match": "buy groceries",
+        "new_title": "buy groceries and snacks"
+      },
+      "expected_outcome": "success"
+    },
+    {
+      "id": 19,
+      "category": "update_task",
+      "input": "Update the report task description to include deadline",
+      "expected_intent": "update_task",
+      "expected_tool_calls": ["list_tasks", "update_task"],
+      "expected_parameters": {
+        "task_title_match": "report",
+        "update_description": true
+      },
+      "expected_outcome": "success"
+    },
+    {
+      "id": 20,
+      "category": "update_task",
+      "input": "Rename the task to 'Call mom tonight'",
+      "expected_intent": "update_task",
+      "expected_tool_calls": ["list_tasks", "update_task"],
+      "expected_parameters": {
+        "new_title": "Call mom tonight"
+      },
+      "expected_outcome": "success"
+    },
+    {
+      "id": 21,
+      "category": "add_task",
+      "input": "Add: Pay electricity bill",
+      "expected_intent": "add_task",
+      "expected_tool_calls": ["add_task"],
+      "expected_parameters": {
+        "title": "Pay electricity bill"
+      },
+      "expected_outcome": "success"
+    },
+    {
+      "id": 22,
+      "category": "add_task",
+      "input": "New task: Review pull requests",
+      "expected_intent": "add_task",
+      "expected_tool_calls": ["add_task"],
+      "expected_parameters": {
+        "title": "Review pull requests"
+      },
+      "expected_outcome": "success"
+    },
+    {
+      "id": 23,
+      "category": "add_task",
+      "input": "I should clean the garage this weekend",
+      "expected_intent": "add_task",
+      "expected_tool_calls": ["add_task"],
+      "expected_parameters": {
+        "title": "clean the garage this weekend"
+      },
+      "expected_outcome": "success"
+    },
+    {
+      "id": 24,
+      "category": "add_task",
+      "input": "Don't forget to backup the database",
+      "expected_intent": "add_task",
+      "expected_tool_calls": ["add_task"],
+      "expected_parameters": {
+        "title": "backup the database"
+      },
+      "expected_outcome": "success"
+    },
+    {
+      "id": 25,
+      "category": "add_task",
+      "input": "Make a task for ordering new office supplies",
+      "expected_intent": "add_task",
+      "expected_tool_calls": ["add_task"],
+      "expected_parameters": {
+        "title": "ordering new office supplies"
+      },
+      "expected_outcome": "success"
+    },
+    {
+      "id": 26,
+      "category": "general",
+      "input": "Hello",
+      "expected_intent": "greeting",
+      "expected_tool_calls": [],
+      "expected_parameters": {},
+      "expected_outcome": "greeting_response"
+    },
+    {
+      "id": 27,
+      "category": "general",
+      "input": "What can you help me with?",
+      "expected_intent": "help",
+      "expected_tool_calls": [],
+      "expected_parameters": {},
+      "expected_outcome": "help_response"
+    },
+    {
+      "id": 28,
+      "category": "general",
+      "input": "Thank you",
+      "expected_intent": "gratitude",
+      "expected_tool_calls": [],
+      "expected_parameters": {},
+      "expected_outcome": "acknowledgment"
+    },
+    {
+      "id": 29,
+      "category": "list_tasks",
+      "input": "Do I have any tasks?",
+      "expected_intent": "list_tasks",
+      "expected_tool_calls": ["list_tasks"],
+      "expected_parameters": {},
+      "expected_outcome": "success"
+    },
+    {
+      "id": 30,
+      "category": "list_tasks",
+      "input": "Show me what's on my todo list",
+      "expected_intent": "list_tasks",
+      "expected_tool_calls": ["list_tasks"],
+      "expected_parameters": {},
+      "expected_outcome": "success"
+    }
+  ],
+  "evaluation_criteria": {
+    "intent_accuracy": "Percentage of correctly identified intents",
+    "tool_call_accuracy": "Percentage of correct tool calls made",
+    "parameter_accuracy": "Percentage of correct parameters extracted",
+    "overall_success": "Percentage of test cases with successful outcomes"
+  },
+  "notes": [
+    "This is a subset of 30 test cases. Full set would include 100 cases.",
+    "Test cases cover common natural language patterns for task management.",
+    "Expected tool calls may include multiple tools for complex operations.",
+    "Task matching (by title) requires fuzzy matching or list_tasks first.",
+    "Evaluation should measure both technical correctness and user satisfaction."
+  ]
+}

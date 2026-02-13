@@ -1,0 +1,428 @@
+mcp_version: "1.0"
+server:
+  name: todo-mcp-server
+  description: |
+    Model Context Protocol (MCP) server providing task management tools for the Todo AI Chatbot.
+    All tools are stateless and interact directly with the PostgreSQL database.
+  version: 1.0.0
+
+tools:
+  - name: add_task
+    description: |
+      Create a new task for the user. Extracts task title and optional description from natural language.
+      Returns the created task ID and confirmation.
+    input_schema:
+      type: object
+      required:
+        - user_id
+        - title
+      properties:
+        user_id:
+          type: string
+          format: uuid
+          description: UUID of the user creating the task
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Task title (1-200 characters)
+          example: "Buy groceries"
+        description:
+          type: string
+          maxLength: 1000
+          nullable: true
+          description: Optional task description (max 1000 characters)
+          example: "Get milk, eggs, bread, and vegetables"
+    output_schema:
+      type: object
+      required:
+        - task_id
+        - status
+        - title
+      properties:
+        task_id:
+          type: string
+          format: uuid
+          description: UUID of the created task
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        status:
+          type: string
+          enum: [created]
+          description: Operation status
+          example: "created"
+        title:
+          type: string
+          description: Confirmed task title
+          example: "Buy groceries"
+        description:
+          type: string
+          nullable: true
+          description: Confirmed task description
+          example: "Get milk, eggs, bread, and vegetables"
+    errors:
+      - code: INVALID_TITLE
+        message: "Title must be 1-200 characters"
+      - code: INVALID_DESCRIPTION
+        message: "Description must be max 1000 characters"
+      - code: USER_NOT_FOUND
+        message: "User does not exist"
+      - code: DATABASE_ERROR
+        message: "Failed to create task in database"
+
+  - name: list_tasks
+    description: |
+      Retrieve user's tasks with optional status filtering. Returns tasks in creation order (newest first).
+      Supports filtering by completion status (all, pending, completed).
+    input_schema:
+      type: object
+      required:
+        - user_id
+      properties:
+        user_id:
+          type: string
+          format: uuid
+          description: UUID of the user
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        status:
+          type: string
+          enum: [all, pending, completed]
+          default: all
+          description: Filter by task completion status
+          example: "pending"
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 50
+          description: Maximum number of tasks to return
+          example: 20
+    output_schema:
+      type: object
+      required:
+        - tasks
+        - total
+      properties:
+        tasks:
+          type: array
+          description: List of tasks matching the filter
+          items:
+            type: object
+            required:
+              - task_id
+              - title
+              - is_complete
+              - created_at
+            properties:
+              task_id:
+                type: string
+                format: uuid
+                example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+              title:
+                type: string
+                example: "Buy groceries"
+              description:
+                type: string
+                nullable: true
+                example: "Get milk, eggs, bread"
+              is_complete:
+                type: boolean
+                example: false
+              created_at:
+                type: string
+                format: date-time
+                example: "2026-02-07T10:30:00Z"
+              updated_at:
+                type: string
+                format: date-time
+                example: "2026-02-07T10:30:00Z"
+        total:
+          type: integer
+          description: Total number of tasks matching the filter
+          example: 15
+    errors:
+      - code: USER_NOT_FOUND
+        message: "User does not exist"
+      - code: INVALID_STATUS
+        message: "Status must be 'all', 'pending', or 'completed'"
+      - code: DATABASE_ERROR
+        message: "Failed to retrieve tasks from database"
+
+  - name: complete_task
+    description: |
+      Mark a task as complete. Validates that the task belongs to the user before updating.
+      Returns confirmation with task details.
+    input_schema:
+      type: object
+      required:
+        - user_id
+        - task_id
+      properties:
+        user_id:
+          type: string
+          format: uuid
+          description: UUID of the user
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        task_id:
+          type: string
+          format: uuid
+          description: UUID of the task to complete
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+    output_schema:
+      type: object
+      required:
+        - task_id
+        - status
+        - title
+        - is_complete
+      properties:
+        task_id:
+          type: string
+          format: uuid
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        status:
+          type: string
+          enum: [completed]
+          description: Operation status
+          example: "completed"
+        title:
+          type: string
+          description: Task title
+          example: "Buy groceries"
+        is_complete:
+          type: boolean
+          description: Completion status (always true after this operation)
+          example: true
+    errors:
+      - code: TASK_NOT_FOUND
+        message: "Task does not exist"
+      - code: PERMISSION_DENIED
+        message: "Task belongs to another user"
+      - code: ALREADY_COMPLETE
+        message: "Task is already marked as complete"
+      - code: DATABASE_ERROR
+        message: "Failed to update task in database"
+
+  - name: delete_task
+    description: |
+      Permanently delete a task. Validates that the task belongs to the user before deletion.
+      Returns confirmation with deleted task details.
+    input_schema:
+      type: object
+      required:
+        - user_id
+        - task_id
+      properties:
+        user_id:
+          type: string
+          format: uuid
+          description: UUID of the user
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        task_id:
+          type: string
+          format: uuid
+          description: UUID of the task to delete
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+    output_schema:
+      type: object
+      required:
+        - task_id
+        - status
+        - title
+      properties:
+        task_id:
+          type: string
+          format: uuid
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        status:
+          type: string
+          enum: [deleted]
+          description: Operation status
+          example: "deleted"
+        title:
+          type: string
+          description: Title of the deleted task
+          example: "Buy groceries"
+    errors:
+      - code: TASK_NOT_FOUND
+        message: "Task does not exist"
+      - code: PERMISSION_DENIED
+        message: "Task belongs to another user"
+      - code: DATABASE_ERROR
+        message: "Failed to delete task from database"
+
+  - name: update_task
+    description: |
+      Update task title and/or description. Validates that the task belongs to the user before updating.
+      At least one field (title or description) must be provided.
+    input_schema:
+      type: object
+      required:
+        - user_id
+        - task_id
+      properties:
+        user_id:
+          type: string
+          format: uuid
+          description: UUID of the user
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        task_id:
+          type: string
+          format: uuid
+          description: UUID of the task to update
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+          nullable: true
+          description: New task title (optional, 1-200 characters)
+          example: "Buy groceries and household items"
+        description:
+          type: string
+          maxLength: 1000
+          nullable: true
+          description: New task description (optional, max 1000 characters)
+          example: "Get milk, eggs, bread, vegetables, and cleaning supplies"
+    output_schema:
+      type: object
+      required:
+        - task_id
+        - status
+        - title
+      properties:
+        task_id:
+          type: string
+          format: uuid
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        status:
+          type: string
+          enum: [updated]
+          description: Operation status
+          example: "updated"
+        title:
+          type: string
+          description: Updated task title
+          example: "Buy groceries and household items"
+        description:
+          type: string
+          nullable: true
+          description: Updated task description
+          example: "Get milk, eggs, bread, vegetables, and cleaning supplies"
+    errors:
+      - code: TASK_NOT_FOUND
+        message: "Task does not exist"
+      - code: PERMISSION_DENIED
+        message: "Task belongs to another user"
+      - code: INVALID_TITLE
+        message: "Title must be 1-200 characters"
+      - code: INVALID_DESCRIPTION
+        message: "Description must be max 1000 characters"
+      - code: NO_FIELDS_PROVIDED
+        message: "At least one field (title or description) must be provided"
+      - code: DATABASE_ERROR
+        message: "Failed to update task in database"
+
+implementation_notes:
+  stateless_design: |
+    All tools are stateless functions that:
+    1. Receive user_id and operation parameters
+    2. Validate inputs
+    3. Execute database operation
+    4. Return structured response
+    5. Hold no state between invocations
+
+  user_isolation: |
+    Every tool enforces user isolation by:
+    1. Requiring user_id parameter
+    2. Filtering all queries by user_id
+    3. Validating ownership before modifications
+    4. Raising PERMISSION_DENIED for unauthorized access
+
+  error_handling: |
+    Tools raise exceptions for validation and permission errors.
+    The agent handles these gracefully and provides user-friendly responses.
+
+  database_integration: |
+    Tools use SQLModel ORM with direct database access:
+    - Connection pooling configured for concurrent requests
+    - Transactions for data consistency
+    - Indexes on user_id and task_id for performance
+
+  validation_rules:
+    task_title:
+      - Required for add_task
+      - Optional for update_task (if description provided)
+      - Length: 1-200 characters
+      - Non-empty after trimming whitespace
+    task_description:
+      - Optional for all operations
+      - Max length: 1000 characters
+      - Nullable (can be set to null)
+    user_id:
+      - Required for all operations
+      - Must be valid UUID format
+      - Must reference existing user
+    task_id:
+      - Required for complete_task, delete_task, update_task
+      - Must be valid UUID format
+      - Must reference existing task
+      - Must belong to the specified user
+
+agent_integration:
+  context_variables:
+    user_id: |
+      Passed to agent via context_variables in Runner.run_async().
+      Agent automatically includes this in all tool calls.
+
+  tool_selection: |
+    Agent instructions include explicit trigger patterns:
+    - "add", "create", "remember" → add_task
+    - "show", "list", "what", "view" → list_tasks
+    - "done", "complete", "finished" → complete_task
+    - "delete", "remove", "cancel" → delete_task
+    - "change", "update", "rename" → update_task
+
+  natural_language_mapping:
+    examples:
+      - input: "Add a task to buy groceries"
+        tool: add_task
+        args:
+          title: "Buy groceries"
+          description: null
+      - input: "Show me my pending tasks"
+        tool: list_tasks
+        args:
+          status: "pending"
+      - input: "Mark task 3 as done"
+        tool: complete_task
+        args:
+          task_id: "<resolved from context>"
+      - input: "Delete the meeting task"
+        tool: delete_task
+        args:
+          task_id: "<resolved by searching for 'meeting'>"
+      - input: "Change the groceries task to include vegetables"
+        tool: update_task
+        args:
+          task_id: "<resolved from context>"
+          description: "Include vegetables"
+
+testing_strategy:
+  unit_tests:
+    - Input validation (title length, description length, UUID format)
+    - User isolation (cannot access other users' tasks)
+    - Error handling (task not found, permission denied)
+    - Database operations (create, read, update, delete)
+
+  integration_tests:
+    - Agent + MCP tools integration
+    - Full request-response cycle
+    - Multi-tool workflows (add then complete)
+    - Conversation context maintenance
+
+  contract_tests:
+    - Input schema validation
+    - Output schema validation
+    - Error response format
+    - Tool availability and registration
