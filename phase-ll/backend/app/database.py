@@ -8,13 +8,19 @@ Database connection module with SQLModel engine and session management.
 from sqlmodel import SQLModel, create_engine, Session
 from app.config import settings
 
-# Create database engine
+# Create database engine with serverless-friendly configuration
+# For Vercel serverless functions, use minimal pooling
 engine = create_engine(
     settings.DATABASE_URL,
     echo=settings.DEBUG,
     pool_pre_ping=True,
-    pool_size=5,
-    max_overflow=10
+    pool_size=1,
+    max_overflow=0,
+    pool_recycle=300,  # Recycle connections after 5 minutes
+    connect_args={
+        "connect_timeout": 10,
+        "options": "-c timezone=utc"
+    }
 )
 
 
