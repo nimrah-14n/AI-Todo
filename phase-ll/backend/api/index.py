@@ -1,6 +1,6 @@
 """
 Vercel serverless entry point for FastAPI application.
-This file exports the FastAPI app for Vercel's Python runtime.
+Uses Mangum to adapt FastAPI (ASGI) for serverless environments.
 """
 
 import sys
@@ -11,6 +11,7 @@ root_dir = Path(__file__).parent.parent
 sys.path.insert(0, str(root_dir))
 
 from app.main import app
+from mangum import Mangum
 
-# Vercel expects the app to be exported
-handler = app
+# Wrap FastAPI app with Mangum for serverless compatibility
+handler = Mangum(app, lifespan="off")
